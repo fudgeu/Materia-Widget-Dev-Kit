@@ -146,7 +146,7 @@ const performQSetSubsitutions = (qset) => {
 const standardizeObject = (obj, standardKeys, type = "qset") => {
 	const existingValidKeys = Object.keys(obj).filter((key) => {
 		if (standardKeys.includes(key)) return true
-		console.log(`Found invalid key in ${type}: ${key}`)
+		console.warn(`Found invalid key in ${type}: ${key}`)
 	})
 
 	const standardizedObj = {}
@@ -193,17 +193,21 @@ const performQsetQuestionStandardization = (questionItem) => {
 const findAndStandardizeQuestions = (potentialQ) => {
 	// A copy of instance.php's find_question
 	if (!potentialQ || typeof potentialQ !== 'object') return
+	let questionFound = false
 
 	// go through each item in the array/object
 	Object.entries(potentialQ).forEach(([key, value]) => {
 		if (isQuestion(value)) {
 			// standardize the question item object
 			potentialQ[key] = performQsetQuestionStandardization(value)
+			questionFound = true
 		} else if (value && typeof value === 'object') {
 			// inception!!!
-			findAndStandardizeQuestions(value)
+			questionFound = questionFound || findAndStandardizeQuestions(value)
 		}
 	})
+
+	return questionFound
 }
 
 // create a widget instance data structure
@@ -855,9 +859,15 @@ app.use('/api/json/question_set_get', (req, res) => {
 	try {
 		const id = JSON.parse(req.body.data)[0];
 		let qset = fs.readFileSync(path.join(qsets, id+'.json')).toString()
+
+		// prepare and validate qset
 		qset = performQSetSubsitutions(qset, false)
-		findAndStandardizeQuestions(qset)
+		const questionsFound = findAndStandardizeQuestions(qset)
+		if (!questionsFound) {
+			console.warn(`Qset '${id}' does not have any valid question structure!`)
+		}
 		qset = JSON.stringify(qset)
+
 		res.send(qset.toString());
 	} catch (e) {
 		res.json(getDemoQset(false).qset);
