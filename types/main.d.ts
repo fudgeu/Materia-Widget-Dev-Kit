@@ -1,7 +1,24 @@
 declare namespace Materia {
 	// Qset
 	interface Qset {
-		items: any[]
+		name?: string | null
+		items: Qset | QsetItem[]
+		options?: any
+	}
+
+	interface QsetItem {
+		answers: { id?: string | null, text: string, value: number, options?: any }[],
+		questions: { text: string }[]
+		id: string | number | null,
+		materiaType: 'question',
+		type: 'QA' | 'MC' | string,
+		options?: any,
+	}
+
+	// Media Assets
+	interface MediaAsset {
+		materiaType: 'asset',
+		id: string,
 		options?: any
 	}
 
