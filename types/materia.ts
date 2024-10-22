@@ -303,10 +303,42 @@ declare namespace Materia.Engine {
 }
 
 declare namespace Materia.Score {
-	function submitInteractionForScoring(questionId: string, interactionType: string, value: any): void
-	function submitFinalScoreFromClient(questionId: string, userAnswer: string, score: number): void
+	/**
+	 * Widget interactions are a catch-all category for any (logged) widget activity that isn’t categorized as an answered question or final score.
+	 * It’s up to the score module to make sense of the interaction and grade the widget appropriately.
+	 * Examples include an individual question modifier (hint used, -50%), an overall score modifier (-20% to final score), or more esoteric cases.
+	 * @param questionId Question Id associated with the interaction, if applicable. The score module can ignore it for cases where it doesn’t apply.
+	 * @param interactionType A string identifying what the interaction is, e.g.: ‘hint_used’, ‘attempt_penalty’, etc.
+	 * @param value The value of the interaction, if applicable.
+	 */
+	function submitInteractionForScoring(questionId: string | 0, interactionType: string, value?: any): void
+
+	/**
+	 * A final score submission from the client. In some situations, a widget may not pass back logs for individual questions/interactions, and only pass back a final score. For example, perhaps the widget scores on the client side and only provides the score.
+	 * @param questionId If the final score is being determined by an individual question, its ID can be used here. Otherwise, just use 0.
+	 * @param userAnswer If the final score is determined based on a user’s answer. Can be an empty string otherwise.
+	 * @param score The final score to return.
+	 */
+	function submitFinalScoreFromClient(questionId: string | 0, userAnswer: string, score: number): void
+
+	/**
+	 * An answered question submission. This is the most basic log type. Used in most ordinary responses for individual questions.
+	 * @param questionId The ID of the question being answered.
+	 * @param userAnswer The response the user provided. This string is matched against the widget’s QSET on the server to determine the correct answer.
+	 * @param value The value isn’t by default used to determine the score of the question, however it can be used to pass an additional value to be used in scoring
+	 */
 	function submitQuestionForScoring(questionId: string, userAnswer: string, value?: any): void
+
+	/**
+	 * Adds a message/feedback to the overall score screen.
+	 * @param message Message to display on the score screen
+	 */
 	function addGlobalScoreFeedback(message: string): void
+
+	/**
+	 * Adds an unspecified type of score data for processing by a custom score module.
+	 * @param data Object to store in the score logs
+	 */
 	function addScoreData(data: any): void
 }
 
@@ -324,15 +356,60 @@ declare namespace Materia.ScoreCore {
 	}
 
 	interface Callbacks {
+		/**
+		 * Gets called when Materia will provide base information about the play session and score.
+		 * @param instance Object containing info about existing widget instance (e.g. name, id)
+		 * @param qset Qset of the widget instance
+		 * @param scoreTable Object containing all info regarding the player's answers and how the widget is scored
+		 * @param isPreview Whether or not this is a preview
+		 * @param qsetVersion Qset version of the widget instance
+		 */
 		start: (instance: WidgetInstance, qset: Qset, scoreTable: ScoreTableItem[], isPreview: boolean, qsetVersion: number) => void
+		/**
+		 * Gets called when an update has occurred to the score table or qset.
+		 * @param qset Updated qset
+		 * @param scoreTable Updated score table
+		 */
 		update: (qset: Qset, scoreTable: ScoreTableItem[]) => void,
+
+		/**
+		 * Gets called when Materia is ready to provide you the score distribution. Requests are made through Materia.ScoreCore.requestScoreDistribution().
+		 * @param distribution An unsorted number array containing all scores for the current semester.
+		 */
 		handleScoreDistribution?: (distribution: number[]) => void,
 	}
 
+	/**
+	 * Signals that your score screen is done loading its assets and passes a keyed object with callbacks to receive data from the server.
+	 * @param callbacks Object containing required callback methods
+	 */
 	function start(callbacks: Callbacks): void
+
+	/**
+	 * Tells Materia to not display the default results table. By default is is shown. Call this method as soon as possible to reduce UI flashing.
+	 */
 	function hideResultsTable(): void
+
+	/**
+	 * Tells Materia to not display the top score overview section (the final score section above the results table).
+	 */
 	function hideScoresOverview(): void
+
+	/**
+	 * Gets an anonymous and unsorted array containing all completed scores for a widget for the current semester. Make sure you have the handleScoreDistribution callback registered.
+	 */
+	function requestScoreDistribution()
+
+	/**
+	 * Adjusts the height of the score screen in pixels.
+	 * @param height Height in pixels
+	 */
 	function setHeight(height: number): void
+
+	/**
+	 * Convert a Materia asset id into a url.
+	 * @param mediaId Materia asset id to convert.
+	 */
 	function getMediaUrl(mediaId: string): string
 }
 
@@ -349,8 +426,31 @@ declare namespace Materia.Storage {
 
 
 declare namespace Materia.Storage.Manager {
+	/**
+	 * Initialize a table to store data in. Call once per table.
+	 * @param tableName Name of the table to create. Avoid spaces and special characters, use underscores.
+	 * @param columnName Name of the first column
+	 * @param columnsNames Add as many columns as you need
+	 */
 	function addTable(tableName: string, columnName: string, ...columnsNames: string[]): void
+
+	/**
+	 * Get a reference to the table for quick stuff.
+	 * @param tableName Name of the table to get. Should match the name it was created with.
+	 */
 	function getTable(tableName: string): MateriaTable
+
+	/**
+	 * Add data into a table.
+	 * @param tableName Name of the table to add data to. Should match the name it was created with.
+	 * @param firstColumnValue Name of the first column
+	 * @param restColumnsValues Add as many columns as you need
+	 */
 	function insert(tableName: string, firstColumnValue: any, ...restColumnsValues: any[]): void
+
+	/**
+	 * Convert a string into a storage table compatible name.
+	 * @param name String to convert
+	 */
 	function clean(name: string): string
 }
